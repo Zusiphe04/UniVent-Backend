@@ -27,16 +27,16 @@ public class StudentService implements IStudentService{
 
     @Override
     public Student read(String string) {
-        return null;
+        return studentRepository.findById(string).orElse(null);
     }
 
     @Override
     public Student update(Student student) {
-        return null;
+        return studentRepository.save(student);
     }
 
     @Override
     public void delete(String string) {
-
+        studentRepository.deleteById(string);
     }
 }
