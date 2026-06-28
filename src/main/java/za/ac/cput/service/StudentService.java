@@ -19,7 +19,10 @@ public class StudentService implements IStudentService{
 
     @Override
     public Student create(Student student) {
-        return null;
+        if (student == null){
+            return null;
+        }
+        return studentRepository.save(student);
     }
 
     @Override
