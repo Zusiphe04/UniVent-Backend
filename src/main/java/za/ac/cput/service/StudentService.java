@@ -1,7 +1,8 @@
 package za.ac.cput.service;
 
+import org.springframework.stereotype.Service;
 import za.ac.cput.domain.Student;
-
+@Service
 public class StudentService implements IStudentService{
     @Override
     public Student findByStudentNumber(String studentNumber) {
