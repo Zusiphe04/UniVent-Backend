@@ -10,7 +10,10 @@ public class Helper {
         return (str == null || str.trim().isEmpty());
     }
 
+    public static String generateId() {
 
+        return java.util.UUID.randomUUID().toString();
+    }
     public static boolean isValidEmail(String email) {
         return !isNullOrEmpty(email) && EMAIL_PATTERN.matcher(email).matches();
     }
