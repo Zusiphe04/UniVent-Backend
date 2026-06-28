@@ -7,7 +7,7 @@ import jakarta.persistence.*;
 @Table(name = "users")
 public abstract class User {
     @Id
-    protected Long userId;
+    protected String userId;
     protected String name;
     protected String email;
     protected String passwordHash;
