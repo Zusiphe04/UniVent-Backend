@@ -1,4 +1,4 @@
-package za.ac.cput.univentbackend.serviceTest.OrganizerServiceTest;
+package za.ac.cput.univentbackend.serviceTest;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
