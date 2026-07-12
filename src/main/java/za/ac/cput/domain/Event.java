@@ -2,6 +2,12 @@ package za.ac.cput.domain;
 
 import jakarta.persistence.*;
 
+/**Student name: Uyathandwa Ngomana
+ * Student number: 231173229
+ * Group: 3H
+ * Date: 05 July 2026
+ * **/
+
 @Entity
 @Table(name = "events")
 public class Event {

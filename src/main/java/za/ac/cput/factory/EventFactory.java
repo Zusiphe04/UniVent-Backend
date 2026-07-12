@@ -5,6 +5,12 @@ import za.ac.cput.domain.Organizer;
 import za.ac.cput.domain.Venue;
 import za.ac.cput.util.Helper;
 
+/**Student name: Uyathandwa Ngomana
+ * Student number: 231173229
+ * Group: 3H
+ * Date: 05 July 2026
+ * **/
+
 public class EventFactory {
 
     public static Event createEvent(String name,
