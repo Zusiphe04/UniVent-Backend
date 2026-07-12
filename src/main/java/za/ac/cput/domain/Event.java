@@ -66,6 +66,8 @@ public class Event {
                 ", venue=" + venue + '}';
     }
 
+
+
     public static class Builder {
         private String name;
         private String description;
