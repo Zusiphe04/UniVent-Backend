@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import za.ac.cput.domain.User;
 
 import java.security.Key;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
@@ -20,7 +21,7 @@ public class JwtUtil {
     private long expirationMs;
 
     private Key getSigningKey(){
-        return Keys.hmacShaKeyFor(secret.getBytes());
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateToken(User user) {
