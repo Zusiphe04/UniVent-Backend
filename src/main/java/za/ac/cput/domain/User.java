@@ -12,6 +12,7 @@ public abstract class User {
     protected String email;
     protected String passwordHash;
     protected String phoneNumber;
+    @Enumerated(EnumType.STRING)
     protected RoleEnum role;
     @Column(nullable = false)
     protected boolean disabled = false;

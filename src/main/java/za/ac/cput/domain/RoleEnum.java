@@ -1,7 +1,7 @@
 package za.ac.cput.domain;
 
 public enum RoleEnum {
-    STUDENT,
+    ADMIN,
     ORGANIZER,
-    ADMIN
+    STUDENT,
 }
