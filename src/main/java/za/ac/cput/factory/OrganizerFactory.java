@@ -2,6 +2,7 @@ package za.ac.cput.factory;
 
 import za.ac.cput.domain.Event;
 import za.ac.cput.domain.Organizer;
+import za.ac.cput.domain.RoleEnum;
 import za.ac.cput.util.Helper;
 
 import java.util.List;
@@ -50,10 +51,12 @@ public class OrganizerFactory {
             throw new IllegalArgumentException("Invalid contact email");
         }
         return new Organizer.Builder()
+                .setUserId(Helper.generateId())
                 .setName(name)
                 .setEmail(email)
                 .setPasswordHash(password)
                 .setPhoneNumber(phoneNumber)
+                .setRole(RoleEnum.ORGANIZER)
                 .setOrganizationName(organizationName)
                 .setOrganizationType(organizationType)
                 .setEvents(events)

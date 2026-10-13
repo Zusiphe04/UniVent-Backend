@@ -10,6 +10,9 @@ public class Student extends User{
     private String faculty;
     private String department;
     private int yearOfStudy;
+    private String residence;
+    private boolean emailReminders = true;
+    private boolean eventUpdates = true;
 
     protected Student(){}
 
@@ -24,6 +27,52 @@ public class Student extends User{
         this.faculty = builder.faculty;
         this.department = builder.department;
         this.yearOfStudy = builder.yearOfStudy;
+    }
+
+    public String getStudentNumber() {
+        return studentNumber;
+    }
+
+    public String getFaculty() {
+        return faculty;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public int getYearOfStudy() {
+        return yearOfStudy;
+    }
+
+    public String getResidence() {
+        return residence;
+    }
+
+    public boolean isEmailReminders() {
+        return emailReminders;
+    }
+
+    public boolean isEventUpdates() {
+        return eventUpdates;
+    }
+
+    public void updateProfile(String firstName,
+                              String surname,
+                              String phoneNumber,
+                              String residence,
+                              String faculty,
+                              int yearOfStudy) {
+        this.name = (firstName.trim() + " " + surname.trim()).trim();
+        this.phoneNumber = phoneNumber;
+        this.residence = residence;
+        this.faculty = faculty;
+        this.yearOfStudy = yearOfStudy;
+    }
+
+    public void updateNotificationPreferences(boolean emailReminders, boolean eventUpdates) {
+        this.emailReminders = emailReminders;
+        this.eventUpdates = eventUpdates;
     }
 
     public static class Builder{

@@ -26,7 +26,12 @@ public class Organizer extends User{
     }
 
     public Organizer(Builder builder) {
-        //super(builder);
+        this.userId = builder.userId;
+        this.name = builder.name;
+        this.email = builder.email;
+        this.passwordHash = builder.passwordHash;
+        this.phoneNumber = builder.phoneNumber;
+        this.role = builder.role;
         this.organizationName = builder.organizationName;
         this.organizationType = builder.organizationType;
         this.contactEmail = builder.contactEmail;
