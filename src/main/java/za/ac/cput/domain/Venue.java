@@ -17,6 +17,7 @@ import java.util.UUID;
 public class Venue {
 
     @Id
+    @Column(length = 36)
     private String venueId;
 
     private String venueName;

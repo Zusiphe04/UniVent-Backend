@@ -58,6 +58,7 @@ public class SecurityConfig {
                         // Public routes — no token needed
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/error").permitAll()
 
                         // Student-only routes
                         .requestMatchers("/api/users/me/**").hasRole("STUDENT")
