@@ -46,19 +46,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         String userId = jwtUtil.extractUserId(token);
+        String tokenRole = jwtUtil.extractRole(token);
 
         User user = userId == null
                 ? null
                 : userRepository.findById(userId).orElse(null);
 
-        if (user == null || user.isDisabled()) {
+        if (user == null || user.isDisabled() || user.getRole() == null
+                || tokenRole == null || !user.getRole().name().equals(tokenRole)) {
             SecurityContextHolder.clearContext();
             filterChain.doFilter(request, response);
             return;
         }
 
         String email = user.getEmail() != null ? user.getEmail() : jwtUtil.extractEmail(token);
-        String role = user.getRole() != null ? user.getRole().name() : jwtUtil.extractRole(token);
+        String role = tokenRole;
 
         AuthenticatedUser principal = new AuthenticatedUser(user.getUserId(), email, role);
 

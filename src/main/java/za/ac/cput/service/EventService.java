@@ -17,6 +17,8 @@ import za.ac.cput.util.Helper;
 import za.ac.cput.util.UnauthorizedException;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 
 @Service
 public class EventService implements IEventService {
@@ -48,6 +50,35 @@ public class EventService implements IEventService {
     @Override
     public List<Event> findAll() {
         return eventRepository.findAll();
+    }
+
+    public List<Event> findApproved(String search, String category, String date, String status) {
+        if (status != null && !status.isBlank()) {
+            EventStatusEnum requestedStatus;
+            try {
+                requestedStatus = EventStatusEnum.valueOf(status.trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalArgumentException("Unknown event status: " + status);
+            }
+            if (requestedStatus != EventStatusEnum.APPROVED) {
+                return List.of();
+            }
+        }
+        return eventRepository.findApprovedFiltered(
+                normalize(search), normalize(category), normalize(date));
+    }
+
+    public Optional<Event> findApprovedById(int id) {
+        return eventRepository.findByEventIdAndStatus(id, EventStatusEnum.APPROVED);
+    }
+
+    public Optional<Event> findVisibleById(int id, String requesterId, boolean admin) {
+        return eventRepository.findById(id).filter(event ->
+                event.getStatus() == EventStatusEnum.APPROVED
+                        || admin
+                        || (event.getOrganizer() != null
+                        && event.getOrganizer().getUserId() != null
+                        && event.getOrganizer().getUserId().equals(requesterId)));
     }
 
     @Override
@@ -149,5 +180,9 @@ public class EventService implements IEventService {
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("Invalid event status: " + status);
         }
+    }
+
+    private String normalize(String value) {
+        return value == null || value.isBlank() ? null : value.trim().toLowerCase(Locale.ROOT);
     }
 }

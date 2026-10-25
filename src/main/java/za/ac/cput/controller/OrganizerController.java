@@ -20,7 +20,6 @@ import java.util.stream.Collectors;
  * Date: 05 July 2026
  **/
 
-@RestController
 @RequestMapping("/api/organizers")
 public class OrganizerController {
     private final OrganizerService organizerService;

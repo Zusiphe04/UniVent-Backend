@@ -2,6 +2,8 @@ package za.ac.cput.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import za.ac.cput.domain.Notification;
 import za.ac.cput.dtos.NotificationResponse;
 import za.ac.cput.exception.NotificationNotFoundException;
@@ -50,6 +52,8 @@ public class NotificationService {
 
     private Notification findOwned(String notificationId, String email) {
         return notificationRepository.findByNotificationIdAndRecipient_Email(notificationId, email)
-                .orElseThrow(() -> new NotificationNotFoundException("Notification not found"));
+                .orElseThrow(() -> notificationRepository.existsById(notificationId)
+                        ? new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not own this notification")
+                        : new NotificationNotFoundException("Notification not found"));
     }
 }
