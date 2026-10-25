@@ -84,8 +84,7 @@ public class AuthService {
                     request.getPhoneNumber(),
                     request.getOrganizationName(),
                     request.getOrganizationType(),
-                    null,
-                    request.getContactEmail()
+                    request.getOrganizationEmail()
             );
             savedUser = organizerRepository.save(organizer);
 
@@ -114,6 +113,14 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new InvalidCredentialsException("Invalid email or password");
+        }
+
+
+        // Administrators disable accounts by flagging User.disabled; honour that
+        // flag here so a disabled user can never obtain a fresh token. Existing
+        // tokens are also rejected by JwtAuthenticationFilter.
+        if (user.isDisabled()) {
+            throw new IllegalArgumentException("This account has been disabled. Please contact an administrator.");
         }
 
 

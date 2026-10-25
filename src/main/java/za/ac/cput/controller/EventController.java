@@ -6,6 +6,10 @@ import za.ac.cput.domain.Event;
 import za.ac.cput.dtos.EventSummaryResponse;
 import za.ac.cput.service.EventService;
 
+/**
+ * Read-only event endpoints. Event changes are handled by their authorized
+ * workflows rather than accepting an organizer from the request body.
+ */
 import java.util.List;
 
 @RestController
@@ -16,12 +20,6 @@ public class EventController {
 
     public EventController(EventService eventService) {
         this.eventService = eventService;
-    }
-
-    @PostMapping
-    public ResponseEntity<Event> createEvent(@RequestBody Event event) {
-        Event createdEvent = eventService.create(event);
-        return ResponseEntity.ok(createdEvent);
     }
 
     @GetMapping
@@ -41,16 +39,9 @@ public class EventController {
         return ResponseEntity.ok(EventSummaryResponse.from(event));
     }
 
-    @PutMapping
-    public ResponseEntity<Event> updateEvent(@RequestBody Event event) {
-        Event updatedEvent = eventService.update(event);
-        return ResponseEntity.ok(updatedEvent);
-    }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEvent(@PathVariable Integer id) {
         eventService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
-

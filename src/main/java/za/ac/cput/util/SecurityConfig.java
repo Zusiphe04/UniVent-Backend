@@ -2,11 +2,11 @@ package za.ac.cput.util;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -66,9 +66,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/bookings/**").hasRole("STUDENT")
                         .requestMatchers("/api/tickets/**").hasRole("STUDENT")
 
-                        // Organizer-only routes
-                        .requestMatchers(HttpMethod.POST, "/api/events").hasRole("ORGANIZER")
-                        .requestMatchers(HttpMethod.PUT, "/api/events/**").hasRole("ORGANIZER")
+                        // Organizer-only routes (event creation/update now lives
+                        // under /api/organizers/** so ownership can be enforced
+                        // against the signed-in organizer)
+                        .requestMatchers("/api/organizers/**").hasRole("ORGANIZER")
 
                         // Admin-only routes
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
