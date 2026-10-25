@@ -45,11 +45,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-
         String userId = jwtUtil.extractUserId(token);
 
-        // Re-load the user on every request so that disabled or deleted accounts
-        // are rejected immediately, even if they still hold a valid token.
         User user = userId == null
                 ? null
                 : userRepository.findById(userId).orElse(null);
@@ -61,8 +58,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String email = user.getEmail() != null ? user.getEmail() : jwtUtil.extractEmail(token);
-        // The persisted role is authoritative so a stale token cannot keep
-        // privileges that the user no longer has.
         String role = user.getRole() != null ? user.getRole().name() : jwtUtil.extractRole(token);
 
         AuthenticatedUser principal = new AuthenticatedUser(user.getUserId(), email, role);

@@ -29,7 +29,7 @@ public class Event {
     private Organizer organizer;
 
     @ManyToOne
-    @JoinColumn(name = "venue_id")
+    @JoinColumn(name = "venue_id", columnDefinition = "varchar(36)")
     private Venue venue;
 
     protected Event() {}

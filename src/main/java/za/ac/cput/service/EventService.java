@@ -5,6 +5,8 @@ import za.ac.cput.domain.Event;
 import za.ac.cput.domain.EventStatusEnum;
 import za.ac.cput.repository.EventRepository;
 
+import java.util.List;
+
 @Service
 public class EventService implements IEventService {
     private final EventRepository eventRepository;
@@ -28,6 +30,11 @@ public class EventService implements IEventService {
     @Override
     public Event read(Integer id) {
         return eventRepository.findById(id).orElse(null);
+    }
+
+    @Override
+    public List<Event> findAll() {
+        return eventRepository.findAll();
     }
 
     @Override

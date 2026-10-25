@@ -3,18 +3,15 @@ package za.ac.cput.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import za.ac.cput.domain.Event;
+import za.ac.cput.dtos.EventSummaryResponse;
 import za.ac.cput.service.EventService;
 
 /**
- * Read-only event endpoints.
- *
- * <p>Event creation and updates were removed from this controller on purpose:
- * they accepted an organizer from the request body without any ownership check,
- * allowing an organizer to bypass the administrator approval workflow. All
- * organizer writes now go through
- * {@code /api/organizers/{organizerId}/events}, which derives the organizer from
- * the authenticated JWT and forces new events to {@code PENDING_APPROVAL}.</p>
+ * Read-only event endpoints. Event changes are handled by their authorized
+ * workflows rather than accepting an organizer from the request body.
  */
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/events")
 public class EventController {
@@ -25,10 +22,21 @@ public class EventController {
         this.eventService = eventService;
     }
 
+    @GetMapping
+    public ResponseEntity<List<EventSummaryResponse>> getEvents() {
+        List<EventSummaryResponse> events = eventService.findAll().stream()
+                .map(EventSummaryResponse::from)
+                .toList();
+        return ResponseEntity.ok(events);
+    }
+
     @GetMapping("/{id}")
-    public ResponseEntity<Event> getEventById(@PathVariable Integer id) {
+    public ResponseEntity<EventSummaryResponse> getEventById(@PathVariable Integer id) {
         Event event = eventService.read(id);
-        return ResponseEntity.ok(event);
+        if (event == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(EventSummaryResponse.from(event));
     }
 
     @DeleteMapping("/{id}")
@@ -37,4 +45,3 @@ public class EventController {
         return ResponseEntity.noContent().build();
     }
 }
-

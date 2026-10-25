@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import za.ac.cput.controller.EventController;
 import za.ac.cput.domain.Event;
+import za.ac.cput.dtos.EventSummaryResponse;
 import za.ac.cput.service.EventService;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,11 +38,11 @@ public class EventControllerTest {
 
         when(service.read(1)).thenReturn(event);
 
-        ResponseEntity<Event> response = controller.getEventById(1);
+        ResponseEntity<EventSummaryResponse> response = controller.getEventById(1);
 
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertEquals("Tech Talk", response.getBody().getName());
+        assertEquals("Tech Talk", response.getBody().title());
 
         verify(service).read(1);
     }

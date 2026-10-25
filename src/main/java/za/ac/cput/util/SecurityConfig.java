@@ -1,12 +1,12 @@
 package za.ac.cput.util;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -23,9 +23,15 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RestAuthenticationEntryPoint authenticationEntryPoint;
+    private final RestAccessDeniedHandler accessDeniedHandler;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          RestAuthenticationEntryPoint authenticationEntryPoint,
+                          RestAccessDeniedHandler accessDeniedHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.authenticationEntryPoint = authenticationEntryPoint;
+        this.accessDeniedHandler = accessDeniedHandler;
     }
 
     @Bean
@@ -42,13 +48,21 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
+                )
+
                 .authorizeHttpRequests(auth -> auth
 
                         // Public routes — no token needed
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/error").permitAll()
 
                         // Student-only routes
+                        .requestMatchers("/api/users/me/**").hasRole("STUDENT")
+                        .requestMatchers("/api/notifications/**").hasRole("STUDENT")
                         .requestMatchers("/api/bookings/**").hasRole("STUDENT")
                         .requestMatchers("/api/tickets/**").hasRole("STUDENT")
 
@@ -81,9 +95,9 @@ public class SecurityConfig {
 
         // Allow requests from the React dev server
         // Add production URL when deploying
-        config.setAllowedOrigins(List.of(
-                "http://localhost:5173",  // Vite dev server
-                "http://localhost:3000"   // fallback
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*"
         ));
 
 

@@ -1,6 +1,7 @@
 package za.ac.cput.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.stereotype.Repository;
 import za.ac.cput.domain.Event;
 import za.ac.cput.domain.EventStatusEnum;
@@ -16,6 +17,10 @@ import java.util.List;
 
 @Repository
 public interface EventRepository extends JpaRepository<Event, Integer> {
+    @Override
+    @EntityGraph(attributePaths = "venue")
+    List<Event> findAll();
+
     List<Event> findByOrganizer(Organizer organizer);
     List<Event> findByStatus(EventStatusEnum status);
 }

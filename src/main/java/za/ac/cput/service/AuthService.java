@@ -1,6 +1,7 @@
 package za.ac.cput.service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import za.ac.cput.domain.Organizer;
 import za.ac.cput.domain.RoleEnum;
 import za.ac.cput.domain.Student;
@@ -10,10 +11,15 @@ import za.ac.cput.dtos.LoginRequest;
 import za.ac.cput.dtos.RegisterRequest;
 import za.ac.cput.factory.OrganizerFactory;
 import za.ac.cput.factory.StudentFactory;
+import za.ac.cput.exception.EmailAlreadyExistsException;
+import za.ac.cput.exception.InvalidCredentialsException;
 import za.ac.cput.repository.OrganizerRepository;
 import za.ac.cput.repository.StudentRepository;
 import za.ac.cput.repository.UserRepository;
 import za.ac.cput.util.JwtUtil;
+
+import java.util.Locale;
+
 @Service
 public class AuthService {
     private final UserRepository userRepository;
@@ -34,12 +40,11 @@ public class AuthService {
         this.jwtUtil = jwtUtil;
     }
 
-
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
-
-
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalStateException("An account with this email already exists");
+        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByEmail(email)) {
+            throw new EmailAlreadyExistsException("An account with this email already exists");
         }
 
 
@@ -47,8 +52,8 @@ public class AuthService {
 
         RoleEnum role;
         try {
-            role = RoleEnum.valueOf(request.getRole().toUpperCase());
-        } catch (IllegalArgumentException e) {
+            role = RoleEnum.valueOf(request.getRole().trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException | NullPointerException e) {
             throw new IllegalArgumentException("Invalid role: must be STUDENT or ORGANIZER");
         }
 
@@ -56,9 +61,12 @@ public class AuthService {
         User savedUser;
 
         if (role == RoleEnum.STUDENT) {
+            if (request.getYearOfStudy() == null) {
+                throw new IllegalArgumentException("Year of study is required for students");
+            }
             Student student = StudentFactory.createStudent(
                     request.getName(),
-                    request.getEmail(),
+                    email,
                     hashedPassword,
                     request.getPhoneNumber(),
                     request.getStudentNumber(),
@@ -71,7 +79,7 @@ public class AuthService {
         } else if (role == RoleEnum.ORGANIZER) {
             Organizer organizer = OrganizerFactory.createOrganizer(
                     request.getName(),
-                    request.getEmail(),
+                    email,
                     hashedPassword,
                     request.getPhoneNumber(),
                     request.getOrganizationName(),
@@ -98,14 +106,13 @@ public class AuthService {
 
 
     public AuthResponse login(LoginRequest request) {
-
-
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
 
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid email or password");
+            throw new InvalidCredentialsException("Invalid email or password");
         }
 
 

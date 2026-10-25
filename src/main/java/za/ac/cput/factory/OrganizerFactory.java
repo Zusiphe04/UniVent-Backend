@@ -54,7 +54,7 @@ public class OrganizerFactory {
                 .setEmail(email)
                 .setPasswordHash(password)
                 .setPhoneNumber(phoneNumber)
-                .setRole(RoleEnum.ORGANIZER)        // role is fixed for this subclass
+                .setRole(RoleEnum.ORGANIZER)
                 .setOrganizationName(organizationName)
                 .setOrganizationType(organizationType)
                 .setOrganizationEmail(organizationEmail)
