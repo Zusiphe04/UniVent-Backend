@@ -8,19 +8,31 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
+import za.ac.cput.domain.AccountStatus;
+import za.ac.cput.domain.AdminInviteCode;
+import za.ac.cput.domain.Administrator;
 import za.ac.cput.domain.Organizer;
 import za.ac.cput.domain.RoleEnum;
 import za.ac.cput.domain.Student;
 import za.ac.cput.dtos.AuthResponse;
 import za.ac.cput.dtos.LoginRequest;
 import za.ac.cput.dtos.RegisterRequest;
+import za.ac.cput.exception.EmailAlreadyExistsException;
+import za.ac.cput.exception.StaffNumberAlreadyExistsException;
 import za.ac.cput.repository.OrganizerRepository;
 import za.ac.cput.repository.StudentRepository;
 import za.ac.cput.repository.UserRepository;
+import za.ac.cput.repository.AdministratorRepository;
+import za.ac.cput.repository.AdminInviteCodeRepository;
 import za.ac.cput.service.AuthService;
 import za.ac.cput.util.JwtUtil;
 
 import java.util.Optional;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -36,6 +48,10 @@ public class AuthServiceTest {
     @Mock
     private OrganizerRepository organizerRepository;
     @Mock
+    private AdministratorRepository administratorRepository;
+    @Mock
+    private AdminInviteCodeRepository inviteCodeRepository;
+    @Mock
     private PasswordEncoder passwordEncoder;
     @Mock
     private JwtUtil jwtUtil;
@@ -46,27 +62,28 @@ public class AuthServiceTest {
     private RegisterRequest organizerRequest() {
         RegisterRequest request = new RegisterRequest();
         ReflectionTestUtils.setField(request, "name", "Amanda");
-        ReflectionTestUtils.setField(request, "email", "amanda@example.com");
-        ReflectionTestUtils.setField(request, "password", "secret");
+        ReflectionTestUtils.setField(request, "email", "amanda@mycput.ac.za");
+        ReflectionTestUtils.setField(request, "password", "securepass");
         ReflectionTestUtils.setField(request, "phoneNumber", "0848882617");
         ReflectionTestUtils.setField(request, "role", "ORGANIZER");
+        ReflectionTestUtils.setField(request, "staffNumber", "STF0147");
         ReflectionTestUtils.setField(request, "organizationName", "Bitdevs");
         ReflectionTestUtils.setField(request, "organizationType", "NGO");
-        ReflectionTestUtils.setField(request, "organizationEmail", "bitdevs@example.com");
+        ReflectionTestUtils.setField(request, "contactEmail", "bitdevs@mycput.ac.za");
         return request;
     }
 
     private LoginRequest loginRequest() {
         LoginRequest request = new LoginRequest();
-        ReflectionTestUtils.setField(request, "email", "amanda@example.com");
-        ReflectionTestUtils.setField(request, "password", "secret");
+        ReflectionTestUtils.setField(request, "email", "amanda@mycput.ac.za");
+        ReflectionTestUtils.setField(request, "password", "securepass");
         return request;
     }
 
     @Test
     void registerOrganizerAssignsUserIdAndPersists() {
-        when(userRepository.existsByEmail("amanda@example.com")).thenReturn(false);
-        when(passwordEncoder.encode("secret")).thenReturn("hashed");
+        when(userRepository.existsByEmail("amanda@mycput.ac.za")).thenReturn(false);
+        when(passwordEncoder.encode("securepass")).thenReturn("hashed");
         when(organizerRepository.save(any(Organizer.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(jwtUtil.generateToken(any(Organizer.class))).thenReturn("token");
@@ -81,28 +98,38 @@ public class AuthServiceTest {
         assertNotNull(saved.getUserId(), "Organizer registration must assign a user id");
         assertFalse(saved.getUserId().isBlank());
         assertEquals(RoleEnum.ORGANIZER, saved.getRole());
+        assertEquals("STF0147", saved.getStaffNumber());
+        assertEquals("Bitdevs", saved.getOrganizationName());
+        assertEquals("NGO", saved.getOrganizationType());
+        assertEquals("bitdevs@mycput.ac.za", saved.getOrganizationEmail());
+        assertEquals(AccountStatus.PENDING_APPROVAL, saved.getAccountStatus());
         assertEquals(saved.getUserId(), response.getUserId());
+        assertEquals("Amanda", response.getName());
+        assertEquals("amanda@mycput.ac.za", response.getEmail());
+        assertEquals("ORGANIZER", response.getRole());
         assertEquals("token", response.getToken());
+        assertEquals("PENDING_APPROVAL", response.getAccountStatus());
         verify(studentRepository, never()).save(any(Student.class));
+        verify(administratorRepository, never()).save(any(Administrator.class));
     }
 
     @Test
     void loginRejectsDisabledUser() {
         Organizer organizer = new Organizer.Builder()
                 .setUserId("org-1")
-                .setEmail("amanda@example.com")
+                .setEmail("amanda@mycput.ac.za")
                 .setPasswordHash("hashed")
                 .setRole(RoleEnum.ORGANIZER)
                 .build();
         organizer.setDisabled(true);
 
-        when(userRepository.findByEmail("amanda@example.com")).thenReturn(Optional.of(organizer));
-        when(passwordEncoder.matches("secret", "hashed")).thenReturn(true);
+        when(userRepository.findByEmail("amanda@mycput.ac.za")).thenReturn(Optional.of(organizer));
+        when(passwordEncoder.matches("securepass", "hashed")).thenReturn(true);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> authService.login(loginRequest()));
 
-        assertTrue(exception.getMessage().toLowerCase().contains("disabled"));
+        assertEquals(403, exception.getStatusCode().value());
         verify(jwtUtil, never()).generateToken(any());
     }
 
@@ -110,13 +137,13 @@ public class AuthServiceTest {
     void loginIssuesTokenForEnabledUser() {
         Organizer organizer = new Organizer.Builder()
                 .setUserId("org-1")
-                .setEmail("amanda@example.com")
+                .setEmail("amanda@mycput.ac.za")
                 .setPasswordHash("hashed")
                 .setRole(RoleEnum.ORGANIZER)
                 .build();
 
-        when(userRepository.findByEmail("amanda@example.com")).thenReturn(Optional.of(organizer));
-        when(passwordEncoder.matches("secret", "hashed")).thenReturn(true);
+        when(userRepository.findByEmail("amanda@mycput.ac.za")).thenReturn(Optional.of(organizer));
+        when(passwordEncoder.matches("securepass", "hashed")).thenReturn(true);
         when(jwtUtil.generateToken(organizer)).thenReturn("token");
 
         AuthResponse response = authService.login(loginRequest());
@@ -124,5 +151,180 @@ public class AuthServiceTest {
         assertEquals("token", response.getToken());
         assertEquals("org-1", response.getUserId());
         assertEquals("ORGANIZER", response.getRole());
+    }
+
+    @Test
+    void pendingOrganizerCanLogInAndKeepsPendingStatusInResponse() {
+        Organizer organizer = new Organizer.Builder()
+                .setUserId("org-pending")
+                .setEmail("amanda@mycput.ac.za")
+                .setPasswordHash("hashed")
+                .setRole(RoleEnum.ORGANIZER)
+                .build();
+        organizer.setAccountStatus(AccountStatus.PENDING_APPROVAL);
+        when(userRepository.findByEmail("amanda@mycput.ac.za")).thenReturn(Optional.of(organizer));
+        when(passwordEncoder.matches("securepass", "hashed")).thenReturn(true);
+        when(jwtUtil.generateToken(organizer)).thenReturn("token");
+
+        AuthResponse response = authService.login(loginRequest());
+
+        assertEquals("PENDING_APPROVAL", response.getAccountStatus());
+        assertEquals("token", response.getToken());
+    }
+
+    @Test
+    void invalidAdminInviteDoesNotCreateAnAdministrator() {
+        RegisterRequest request = new RegisterRequest();
+        ReflectionTestUtils.setField(request, "name", "Admin");
+        ReflectionTestUtils.setField(request, "email", "admin@mycput.ac.za");
+        ReflectionTestUtils.setField(request, "password", "securepass");
+        ReflectionTestUtils.setField(request, "phoneNumber", "0848882617");
+        ReflectionTestUtils.setField(request, "role", "ADMIN");
+        ReflectionTestUtils.setField(request, "staffNumber", "STF0001");
+        ReflectionTestUtils.setField(request, "inviteCode", "invalid-code");
+        when(userRepository.existsByEmail("admin@mycput.ac.za")).thenReturn(false);
+        when(passwordEncoder.encode("securepass")).thenReturn("hashed");
+        when(inviteCodeRepository.findByHashForUpdate(anyString())).thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> authService.register(request));
+
+        assertEquals(403, exception.getStatusCode().value());
+        verify(administratorRepository, never()).save(any(Administrator.class));
+    }
+
+    @Test
+    void validAdminInviteIsMarkedUsedWithAccountCreation() throws Exception {
+        String invite = "ADM-ONE-TIME";
+        AdminInviteCode code = new AdminInviteCode(hash(invite));
+        RegisterRequest request = new RegisterRequest();
+        ReflectionTestUtils.setField(request, "name", "Admin");
+        ReflectionTestUtils.setField(request, "email", "admin@mycput.ac.za");
+        ReflectionTestUtils.setField(request, "password", "securepass");
+        ReflectionTestUtils.setField(request, "phoneNumber", "0848882617");
+        ReflectionTestUtils.setField(request, "role", "ADMIN");
+        ReflectionTestUtils.setField(request, "staffNumber", "STF0001");
+        ReflectionTestUtils.setField(request, "inviteCode", invite);
+        when(userRepository.existsByEmail("admin@mycput.ac.za")).thenReturn(false);
+        when(passwordEncoder.encode("securepass")).thenReturn("hashed");
+        when(inviteCodeRepository.findByHashForUpdate(hash(invite))).thenReturn(Optional.of(code));
+        when(administratorRepository.save(any(Administrator.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtUtil.generateToken(any(Administrator.class))).thenReturn("token");
+
+        AuthResponse response = authService.register(request);
+
+        assertEquals("ADMIN", response.getRole());
+        assertEquals("USED", code.getStatus().name());
+        assertEquals("STF0001", ((Administrator) captureSavedAdmin()).getStaffNumber());
+        verify(inviteCodeRepository).save(code);
+    }
+
+    @Test
+    void studentRegistrationPersistsOnlyAnEncodedPassword() {
+        RegisterRequest request = new RegisterRequest();
+        ReflectionTestUtils.setField(request, "name", "Student Name");
+        ReflectionTestUtils.setField(request, "email", "student@mycput.ac.za");
+        ReflectionTestUtils.setField(request, "password", "securepass");
+        ReflectionTestUtils.setField(request, "phoneNumber", "0848882617");
+        ReflectionTestUtils.setField(request, "role", "STUDENT");
+        ReflectionTestUtils.setField(request, "studentNumber", "221234567");
+        ReflectionTestUtils.setField(request, "faculty", "Applied Sciences");
+        ReflectionTestUtils.setField(request, "department", "Chemistry");
+        ReflectionTestUtils.setField(request, "yearOfStudy", 2);
+        when(userRepository.existsByEmail("student@mycput.ac.za")).thenReturn(false);
+        when(passwordEncoder.encode("securepass")).thenReturn("bcrypt-hash");
+        when(studentRepository.save(any(Student.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtUtil.generateToken(any(Student.class))).thenReturn("token");
+
+        AuthResponse response = authService.register(request);
+
+        ArgumentCaptor<Student> captor = ArgumentCaptor.forClass(Student.class);
+        verify(studentRepository).save(captor.capture());
+        assertEquals("bcrypt-hash", captor.getValue().getPasswordHash());
+        assertEquals("ACTIVE", response.getAccountStatus());
+        assertFalse(response.toString().contains("bcrypt-hash"));
+    }
+
+    @Test
+    void duplicateEmailIsRejectedBeforeSaving() {
+        when(userRepository.existsByEmail("amanda@mycput.ac.za")).thenReturn(true);
+
+        assertThrows(EmailAlreadyExistsException.class, () -> authService.register(organizerRequest()));
+
+        verify(organizerRepository, never()).save(any(Organizer.class));
+    }
+
+    @Test
+    void duplicateStaffNumberIsRejectedBeforeSaving() {
+        when(userRepository.existsByEmail("amanda@mycput.ac.za")).thenReturn(false);
+        when(userRepository.existsByStaffNumber("STF0147")).thenReturn(true);
+
+        assertThrows(StaffNumberAlreadyExistsException.class,
+                () -> authService.register(organizerRequest()));
+
+        verify(organizerRepository, never()).save(any(Organizer.class));
+    }
+
+    @Test
+    void organizerContactEmailMustUseUniversityDomain() {
+        RegisterRequest request = organizerRequest();
+        ReflectionTestUtils.setField(request, "contactEmail", "society@example.com");
+        when(userRepository.existsByEmail("amanda@mycput.ac.za")).thenReturn(false);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> authService.register(request));
+
+        assertEquals("Contact email must be valid and end in .ac.za", exception.getMessage());
+        verify(organizerRepository, never()).save(any(Organizer.class));
+    }
+
+    @Test
+    void unknownRoleAndMissingOrganizerFieldsAreBadRequests() {
+        RegisterRequest unknownRole = organizerRequest();
+        ReflectionTestUtils.setField(unknownRole, "role", "GUEST");
+        assertThrows(IllegalArgumentException.class, () -> authService.register(unknownRole));
+
+        RegisterRequest missingFields = organizerRequest();
+        ReflectionTestUtils.setField(missingFields, "staffNumber", null);
+        assertThrows(IllegalArgumentException.class, () -> authService.register(missingFields));
+
+        verify(organizerRepository, never()).save(any(Organizer.class));
+    }
+
+    @Test
+    void usedAdminInviteIsRejected() throws Exception {
+        String invite = "ADM-USED";
+        AdminInviteCode usedCode = new AdminInviteCode(hash(invite));
+        usedCode.markUsed();
+        RegisterRequest request = new RegisterRequest();
+        ReflectionTestUtils.setField(request, "name", "Admin");
+        ReflectionTestUtils.setField(request, "email", "admin@mycput.ac.za");
+        ReflectionTestUtils.setField(request, "password", "securepass");
+        ReflectionTestUtils.setField(request, "phoneNumber", "0848882617");
+        ReflectionTestUtils.setField(request, "role", "ADMIN");
+        ReflectionTestUtils.setField(request, "staffNumber", "STF0001");
+        ReflectionTestUtils.setField(request, "inviteCode", invite);
+        when(userRepository.existsByEmail("admin@mycput.ac.za")).thenReturn(false);
+        when(passwordEncoder.encode("securepass")).thenReturn("hashed");
+        when(inviteCodeRepository.findByHashForUpdate(hash(invite))).thenReturn(Optional.of(usedCode));
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> authService.register(request));
+
+        assertEquals(403, exception.getStatusCode().value());
+        verify(administratorRepository, never()).save(any(Administrator.class));
+    }
+
+    private Administrator captureSavedAdmin() {
+        ArgumentCaptor<Administrator> captor = ArgumentCaptor.forClass(Administrator.class);
+        verify(administratorRepository).save(captor.capture());
+        return captor.getValue();
+    }
+
+    private String hash(String value) throws NoSuchAlgorithmException {
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(value.getBytes(StandardCharsets.UTF_8)));
     }
 }

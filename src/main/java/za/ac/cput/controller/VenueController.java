@@ -11,7 +11,6 @@ import za.ac.cput.service.VenueService;
  * Student Number: 231118384
  */
 
-@RestController
 @RequestMapping("/venue")
 public class VenueController {
 

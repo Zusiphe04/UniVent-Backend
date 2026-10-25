@@ -16,8 +16,13 @@ public class Event {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int eventId;
     private String name;
+    @Column(length = 5000)
     private String description;
     private String dateTime;
+    private String endDateTime;
+    private String category;
+    @Column(length = 2048)
+    private String imageUrl;
     private int maxAttendees;
 
     @Enumerated(EnumType.STRING)
@@ -38,6 +43,9 @@ public class Event {
         this.name = builder.name;
         this.description = builder.description;
         this.dateTime = builder.dateTime;
+        this.endDateTime = builder.endDateTime;
+        this.category = builder.category;
+        this.imageUrl = builder.imageUrl;
         this.maxAttendees = builder.maxAttendees;
         this.status = builder.status;
         this.organizer = builder.organizer;
@@ -52,6 +60,9 @@ public class Event {
         return description; }
     public String getDateTime() {
         return dateTime; }
+    public String getEndDateTime() { return endDateTime; }
+    public String getCategory() { return category; }
+    public String getImageUrl() { return imageUrl; }
     public int getMaxAttendees() {
         return maxAttendees; }
     public EventStatusEnum getStatus() {
@@ -68,6 +79,15 @@ public class Event {
     public void setOrganizer(Organizer organizer) {
         this.organizer = organizer;
     }
+
+    public void setName(String name) { this.name = name; }
+    public void setDescription(String description) { this.description = description; }
+    public void setDateTime(String dateTime) { this.dateTime = dateTime; }
+    public void setEndDateTime(String endDateTime) { this.endDateTime = endDateTime; }
+    public void setCategory(String category) { this.category = category; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public void setMaxAttendees(int maxAttendees) { this.maxAttendees = maxAttendees; }
+    public void setVenue(Venue venue) { this.venue = venue; }
 
     @Override
     public String toString() {
@@ -87,6 +107,9 @@ public class Event {
         private String name;
         private String description;
         private String dateTime;
+        private String endDateTime;
+        private String category;
+        private String imageUrl;
         private int maxAttendees;
         private EventStatusEnum status = EventStatusEnum.UPCOMING;
         private Organizer organizer;
@@ -102,6 +125,18 @@ public class Event {
         }
         public Builder setDateTime(String dateTime) {
             this.dateTime = dateTime;
+            return this;
+        }
+        public Builder setEndDateTime(String endDateTime) {
+            this.endDateTime = endDateTime;
+            return this;
+        }
+        public Builder setCategory(String category) {
+            this.category = category;
+            return this;
+        }
+        public Builder setImageUrl(String imageUrl) {
+            this.imageUrl = imageUrl;
             return this;
         }
         public Builder setMaxAttendees(int maxAttendees) {

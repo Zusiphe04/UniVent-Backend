@@ -6,14 +6,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import za.ac.cput.controller.EventController;
 import za.ac.cput.domain.Event;
+import za.ac.cput.domain.EventStatusEnum;
 import za.ac.cput.dtos.EventSummaryResponse;
 import za.ac.cput.service.EventService;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 public class EventControllerTest {
@@ -34,9 +37,10 @@ public class EventControllerTest {
         Event event = new Event.Builder()
                 .setName("Tech Talk")
                 .setDescription("Java Workshop")
+                .setStatus(EventStatusEnum.APPROVED)
                 .build();
 
-        when(service.read(1)).thenReturn(event);
+        when(service.findApprovedById(1)).thenReturn(Optional.of(event));
 
         ResponseEntity<EventSummaryResponse> response = controller.getEventById(1);
 
@@ -44,17 +48,15 @@ public class EventControllerTest {
         assertNotNull(response.getBody());
         assertEquals("Tech Talk", response.getBody().title());
 
-        verify(service).read(1);
+        verify(service).findApprovedById(1);
     }
 
     @Test
     public void testDeleteEvent() {
 
-        ResponseEntity<Void> response = controller.deleteEvent(1);
-
-        assertNotNull(response);
-        assertEquals(204, response.getStatusCode().value());
-
-        verify(service).delete(1);
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class, () -> controller.deleteEvent(1));
+        assertEquals(405, exception.getStatusCode().value());
+        verify(service, org.mockito.Mockito.never()).delete(1);
     }
 }

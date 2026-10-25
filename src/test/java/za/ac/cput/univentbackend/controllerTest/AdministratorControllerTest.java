@@ -8,7 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import za.ac.cput.controller.AdministratorController;
 import za.ac.cput.domain.Administrator;
-import za.ac.cput.service.AdministratorService;
+import za.ac.cput.service.IAdministratorService;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
@@ -18,7 +18,7 @@ import static org.mockito.Mockito.when;
 public class AdministratorControllerTest {
 
 	@Mock
-	private AdministratorService service;
+	private IAdministratorService service;
 
 	@InjectMocks
 	private AdministratorController controller;
