@@ -4,9 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
-import org.springframework.beans.factory.annotation.Value;
 import za.ac.cput.domain.AccountStatus;
-import za.ac.cput.domain.AdminInviteCode;
 import za.ac.cput.domain.Organizer;
 import za.ac.cput.domain.RoleEnum;
 import za.ac.cput.domain.Student;
@@ -18,7 +16,6 @@ import za.ac.cput.dtos.RegisterRequest;
 import za.ac.cput.factory.OrganizerFactory;
 import za.ac.cput.factory.StudentFactory;
 import za.ac.cput.repository.AdministratorRepository;
-import za.ac.cput.repository.AdminInviteCodeRepository;
 import za.ac.cput.exception.EmailAlreadyExistsException;
 import za.ac.cput.exception.StaffNumberAlreadyExistsException;
 import za.ac.cput.exception.InvalidCredentialsException;
@@ -29,21 +26,13 @@ import za.ac.cput.util.JwtUtil;
 import za.ac.cput.util.Helper;
 
 import java.util.Locale;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 
 @Service
 public class AuthService {
-    @Value("${app.auth.admin-registration-enabled:false}")
-    private boolean adminRegistrationEnabled;
-
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
     private final OrganizerRepository organizerRepository;
     private final AdministratorRepository administratorRepository;
-    private final AdminInviteCodeRepository inviteCodeRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
@@ -51,14 +40,12 @@ public class AuthService {
                        StudentRepository studentRepository,
                        OrganizerRepository organizerRepository,
                        AdministratorRepository administratorRepository,
-                       AdminInviteCodeRepository inviteCodeRepository,
                        PasswordEncoder passwordEncoder,
                        JwtUtil jwtUtil) {
         this.userRepository = userRepository;
         this.studentRepository = studentRepository;
         this.organizerRepository = organizerRepository;
         this.administratorRepository = administratorRepository;
-        this.inviteCodeRepository = inviteCodeRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
     }
@@ -126,15 +113,6 @@ public class AuthService {
         } else if (role == RoleEnum.ADMIN) {
             requireValue(request.getStaffNumber(), "Staff number is required for administrators");
             requireUniqueStaffNumber(request.getStaffNumber());
-            AdminInviteCode inviteCode = null;
-            if (!adminRegistrationEnabled) {
-                requireValue(request.getInviteCode(), "Administrator invite code is required");
-                inviteCode = inviteCodeRepository
-                        .findByHashForUpdate(hashInviteCode(request.getInviteCode()))
-                        .filter(code -> code.getStatus() == za.ac.cput.domain.AdminInviteCodeStatus.AVAILABLE)
-                        .orElseThrow(() -> new ResponseStatusException(
-                                HttpStatus.FORBIDDEN, "Administrator invite code is invalid or already used"));
-            }
             Administrator administrator = new Administrator.Builder()
                     .setUserId(Helper.generateId())
                     .setName(request.getName().trim())
@@ -145,13 +123,6 @@ public class AuthService {
                     .build();
             administrator.setStaffNumber(request.getStaffNumber().trim());
             savedUser = administratorRepository.save(administrator);
-            if (inviteCode != null) {
-                if (!inviteCode.markUsed()) {
-                    throw new ResponseStatusException(
-                            HttpStatus.FORBIDDEN, "Administrator invite code is invalid or already used");
-                }
-                inviteCodeRepository.save(inviteCode);
-            }
         } else {
             throw new IllegalArgumentException("Invalid role");
         }
@@ -237,13 +208,4 @@ public class AuthService {
         }
     }
 
-    private String hashInviteCode(String inviteCode) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(inviteCode.trim().getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
-    }
 }

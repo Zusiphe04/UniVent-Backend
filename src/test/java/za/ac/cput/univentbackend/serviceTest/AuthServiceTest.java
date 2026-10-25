@@ -10,7 +10,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 import za.ac.cput.domain.AccountStatus;
-import za.ac.cput.domain.AdminInviteCode;
 import za.ac.cput.domain.Administrator;
 import za.ac.cput.domain.Organizer;
 import za.ac.cput.domain.RoleEnum;
@@ -24,15 +23,10 @@ import za.ac.cput.repository.OrganizerRepository;
 import za.ac.cput.repository.StudentRepository;
 import za.ac.cput.repository.UserRepository;
 import za.ac.cput.repository.AdministratorRepository;
-import za.ac.cput.repository.AdminInviteCodeRepository;
 import za.ac.cput.service.AuthService;
 import za.ac.cput.util.JwtUtil;
 
 import java.util.Optional;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -49,8 +43,6 @@ public class AuthServiceTest {
     private OrganizerRepository organizerRepository;
     @Mock
     private AdministratorRepository administratorRepository;
-    @Mock
-    private AdminInviteCodeRepository inviteCodeRepository;
     @Mock
     private PasswordEncoder passwordEncoder;
     @Mock
@@ -173,7 +165,7 @@ public class AuthServiceTest {
     }
 
     @Test
-    void invalidAdminInviteDoesNotCreateAnAdministrator() {
+    void adminRegistrationDoesNotRequireAnInviteCode() {
         RegisterRequest request = new RegisterRequest();
         ReflectionTestUtils.setField(request, "name", "Admin");
         ReflectionTestUtils.setField(request, "email", "admin@mycput.ac.za");
@@ -181,33 +173,8 @@ public class AuthServiceTest {
         ReflectionTestUtils.setField(request, "phoneNumber", "0848882617");
         ReflectionTestUtils.setField(request, "role", "ADMIN");
         ReflectionTestUtils.setField(request, "staffNumber", "STF0001");
-        ReflectionTestUtils.setField(request, "inviteCode", "invalid-code");
         when(userRepository.existsByEmail("admin@mycput.ac.za")).thenReturn(false);
         when(passwordEncoder.encode("securepass")).thenReturn("hashed");
-        when(inviteCodeRepository.findByHashForUpdate(anyString())).thenReturn(Optional.empty());
-
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> authService.register(request));
-
-        assertEquals(403, exception.getStatusCode().value());
-        verify(administratorRepository, never()).save(any(Administrator.class));
-    }
-
-    @Test
-    void validAdminInviteIsMarkedUsedWithAccountCreation() throws Exception {
-        String invite = "ADM-ONE-TIME";
-        AdminInviteCode code = new AdminInviteCode(hash(invite));
-        RegisterRequest request = new RegisterRequest();
-        ReflectionTestUtils.setField(request, "name", "Admin");
-        ReflectionTestUtils.setField(request, "email", "admin@mycput.ac.za");
-        ReflectionTestUtils.setField(request, "password", "securepass");
-        ReflectionTestUtils.setField(request, "phoneNumber", "0848882617");
-        ReflectionTestUtils.setField(request, "role", "ADMIN");
-        ReflectionTestUtils.setField(request, "staffNumber", "STF0001");
-        ReflectionTestUtils.setField(request, "inviteCode", invite);
-        when(userRepository.existsByEmail("admin@mycput.ac.za")).thenReturn(false);
-        when(passwordEncoder.encode("securepass")).thenReturn("hashed");
-        when(inviteCodeRepository.findByHashForUpdate(hash(invite))).thenReturn(Optional.of(code));
         when(administratorRepository.save(any(Administrator.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(jwtUtil.generateToken(any(Administrator.class))).thenReturn("token");
@@ -215,11 +182,9 @@ public class AuthServiceTest {
         AuthResponse response = authService.register(request);
 
         assertEquals("ADMIN", response.getRole());
-        assertEquals("USED", code.getStatus().name());
-        assertEquals("STF0001", ((Administrator) captureSavedAdmin()).getStaffNumber());
-        verify(inviteCodeRepository).save(code);
+        assertEquals("ACTIVE", response.getAccountStatus());
+        assertEquals("STF0001", captureSavedAdmin().getStaffNumber());
     }
-
     @Test
     void studentRegistrationPersistsOnlyAnEncodedPassword() {
         RegisterRequest request = new RegisterRequest();
@@ -293,38 +258,10 @@ public class AuthServiceTest {
         verify(organizerRepository, never()).save(any(Organizer.class));
     }
 
-    @Test
-    void usedAdminInviteIsRejected() throws Exception {
-        String invite = "ADM-USED";
-        AdminInviteCode usedCode = new AdminInviteCode(hash(invite));
-        usedCode.markUsed();
-        RegisterRequest request = new RegisterRequest();
-        ReflectionTestUtils.setField(request, "name", "Admin");
-        ReflectionTestUtils.setField(request, "email", "admin@mycput.ac.za");
-        ReflectionTestUtils.setField(request, "password", "securepass");
-        ReflectionTestUtils.setField(request, "phoneNumber", "0848882617");
-        ReflectionTestUtils.setField(request, "role", "ADMIN");
-        ReflectionTestUtils.setField(request, "staffNumber", "STF0001");
-        ReflectionTestUtils.setField(request, "inviteCode", invite);
-        when(userRepository.existsByEmail("admin@mycput.ac.za")).thenReturn(false);
-        when(passwordEncoder.encode("securepass")).thenReturn("hashed");
-        when(inviteCodeRepository.findByHashForUpdate(hash(invite))).thenReturn(Optional.of(usedCode));
-
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> authService.register(request));
-
-        assertEquals(403, exception.getStatusCode().value());
-        verify(administratorRepository, never()).save(any(Administrator.class));
-    }
-
     private Administrator captureSavedAdmin() {
         ArgumentCaptor<Administrator> captor = ArgumentCaptor.forClass(Administrator.class);
         verify(administratorRepository).save(captor.capture());
         return captor.getValue();
     }
 
-    private String hash(String value) throws NoSuchAlgorithmException {
-        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                .digest(value.getBytes(StandardCharsets.UTF_8)));
-    }
 }

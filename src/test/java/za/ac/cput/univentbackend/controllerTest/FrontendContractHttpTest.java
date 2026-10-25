@@ -10,7 +10,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import za.ac.cput.UniventBackendApplication;
 import za.ac.cput.domain.AccountStatus;
-import za.ac.cput.domain.AdminInviteCode;
 import za.ac.cput.domain.Administrator;
 import za.ac.cput.domain.Event;
 import za.ac.cput.domain.EventStatusEnum;
@@ -20,7 +19,6 @@ import za.ac.cput.domain.Organizer;
 import za.ac.cput.domain.RoleEnum;
 import za.ac.cput.domain.Student;
 import za.ac.cput.domain.Venue;
-import za.ac.cput.repository.AdminInviteCodeRepository;
 import za.ac.cput.repository.EventRepository;
 import za.ac.cput.repository.NotificationRepository;
 import za.ac.cput.repository.UserRepository;
@@ -28,10 +26,7 @@ import za.ac.cput.repository.VenueRepository;
 import za.ac.cput.util.JwtUtil;
 import za.ac.cput.univentbackend.utilTest.TestJwtTokenFactory;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.LocalDateTime;
-import java.util.HexFormat;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -57,8 +52,6 @@ class FrontendContractHttpTest {
     private EventRepository events;
     @Autowired
     private VenueRepository venues;
-    @Autowired
-    private AdminInviteCodeRepository inviteCodes;
     @Autowired
     private NotificationRepository notifications;
     @Autowired
@@ -467,26 +460,13 @@ class FrontendContractHttpTest {
     }
 
     @Test
-    void adminInviteIsHashedConsumedOnceAndNeverReturned() throws Exception {
+    void adminRegistrationDoesNotRequireAnInviteCode() throws Exception {
         mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Uninvited Admin","email":"uninvited.admin@mycput.ac.za",
+                                {"name":"New Admin","email":"new.admin@mycput.ac.za",
                                  "password":"securepass","phoneNumber":"0848882617",
-                                 "role":"ADMIN","staffNumber":"STF0000"}
+                                 "role":"ADMIN","staffNumber":"STF0001"}
                                 """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Administrator invite code is required"));
-        org.junit.jupiter.api.Assertions.assertFalse(users.existsByEmail("uninvited.admin@mycput.ac.za"));
-
-        String invite = "ADM-CONTRACT-ONE-TIME";
-        String inviteHash = hash(invite);
-        inviteCodes.save(new AdminInviteCode(inviteHash));
-        String request = """
-                {"name":"First Admin","email":"first.admin@mycput.ac.za","password":"securepass",
-                 "phoneNumber":"0848882617","role":"ADMIN","staffNumber":"STF0001","inviteCode":"%s"}
-                """.formatted(invite);
-
-        mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(request))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role").value("ADMIN"))
                 .andExpect(jsonPath("$.accountStatus").value("ACTIVE"))
@@ -494,17 +474,8 @@ class FrontendContractHttpTest {
                 .andExpect(jsonPath("$.passwordHash").doesNotExist())
                 .andExpect(jsonPath("$.inviteCode").doesNotExist());
 
-        org.junit.jupiter.api.Assertions.assertEquals("USED",
-                inviteCodes.findById(inviteHash).orElseThrow().getStatus().name());
-        String secondRequest = request
-                .replace("first.admin@mycput.ac.za", "another.admin@mycput.ac.za")
-                .replace("STF0001", "STF0002");
-        mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(secondRequest))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.status").value(403));
-        org.junit.jupiter.api.Assertions.assertFalse(users.existsByEmail("another.admin@mycput.ac.za"));
+        org.junit.jupiter.api.Assertions.assertTrue(users.existsByEmail("new.admin@mycput.ac.za"));
     }
-
     private Event event(String name, Organizer owner, EventStatusEnum status) {
         Event event = new Event.Builder()
                 .setName(name)
@@ -530,10 +501,6 @@ class FrontendContractHttpTest {
                 venue.getVenueId());
     }
 
-    private String hash(String value) throws Exception {
-        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                .digest(value.getBytes(StandardCharsets.UTF_8)));
-    }
 
     private String bearer(String token) {
         return "Bearer " + token;
