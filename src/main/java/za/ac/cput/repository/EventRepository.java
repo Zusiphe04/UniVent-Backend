@@ -1,7 +1,12 @@
 package za.ac.cput.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
 import za.ac.cput.domain.Event;
 import za.ac.cput.domain.EventStatusEnum;
@@ -16,10 +21,13 @@ import java.util.List;
  * **/
 
 @Repository
-public interface EventRepository extends JpaRepository<Event, Integer> {
+public interface EventRepository extends JpaRepository<Event, Integer>, JpaSpecificationExecutor<Event> {
     @Override
     @EntityGraph(attributePaths = "venue")
     List<Event> findAll();
+
+    @EntityGraph(attributePaths = "venue")
+    Page<Event> findAll(@Nullable Specification<Event> spec, Pageable pageable);
 
     List<Event> findByOrganizer(Organizer organizer);
     List<Event> findByStatus(EventStatusEnum status);
