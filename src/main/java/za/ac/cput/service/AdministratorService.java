@@ -205,7 +205,7 @@ public class AdministratorService implements IAdministratorService {
             throw new IllegalArgumentException("Administrators cannot disable their own account");
         }
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new za.ac.cput.exception.UserNotFoundException(id));
+                .orElseThrow(() -> new za.ac.cput.exception.UserNotFoundException("User not found: " + id));
         user.setAccountStatus(AccountStatus.DISABLED);
         return toAdminUserResponse(userRepository.save(user));
     }
