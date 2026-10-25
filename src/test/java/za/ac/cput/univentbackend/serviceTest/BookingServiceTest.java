@@ -11,7 +11,6 @@ import za.ac.cput.domain.Event;
 import za.ac.cput.domain.Student;
 import za.ac.cput.domain.Organizer;
 import za.ac.cput.domain.Venue;
-import za.ac.cput.factory.BookingFactory;
 import za.ac.cput.repository.BookingRepository;
 import za.ac.cput.service.BookingService;
 
@@ -30,9 +29,6 @@ public class BookingServiceTest {
 
     @Mock
     private BookingRepository bookingRepository;
-
-    @Mock
-    private BookingFactory bookingFactory;
 
     @InjectMocks
     private BookingService bookingService;
@@ -82,11 +78,13 @@ public class BookingServiceTest {
         // Given
         Student student = createTestStudent();
         Event event = createTestEvent();
-        Booking booking = createTestBooking();
+        Booking booking = new Booking.Builder()
+                .setStudent(student)
+                .setEvent(event)
+                .build();
 
         when(bookingRepository.existsByStudentAndEvent(student, event)).thenReturn(false);
         when(bookingRepository.countByEvent(event)).thenReturn(0L);
-        when(bookingFactory.createBooking(student, event)).thenReturn(booking);
         when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
 
         // When
@@ -99,7 +97,6 @@ public class BookingServiceTest {
         assertEquals(BookingStatusEnum.PENDING, result.getStatus());
         verify(bookingRepository).existsByStudentAndEvent(student, event);
         verify(bookingRepository).countByEvent(event);
-        verify(bookingFactory).createBooking(student, event);
         verify(bookingRepository).save(any(Booking.class));
     }
 
@@ -118,7 +115,6 @@ public class BookingServiceTest {
         assertEquals("Student already has a booking for this event", exception.getMessage());
         verify(bookingRepository).existsByStudentAndEvent(student, event);
         verify(bookingRepository, never()).countByEvent(any(Event.class));
-        verify(bookingFactory, never()).createBooking(any(Student.class), any(Event.class));
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 
@@ -138,7 +134,6 @@ public class BookingServiceTest {
         assertEquals("Event has reached maximum capacity", exception.getMessage());
         verify(bookingRepository).existsByStudentAndEvent(student, event);
         verify(bookingRepository).countByEvent(event);
-        verify(bookingFactory, never()).createBooking(any(Student.class), any(Event.class));
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 
@@ -177,7 +172,6 @@ public class BookingServiceTest {
         assertEquals("Cannot register for past events", exception.getMessage());
         verify(bookingRepository).existsByStudentAndEvent(student, pastEvent);
         verify(bookingRepository).countByEvent(pastEvent);
-        verify(bookingFactory, never()).createBooking(any(Student.class), any(Event.class));
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 

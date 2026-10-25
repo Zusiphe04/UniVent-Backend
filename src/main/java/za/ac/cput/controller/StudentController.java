@@ -5,8 +5,6 @@ import org.springframework.web.bind.annotation.*;
 import za.ac.cput.domain.Student;
 import za.ac.cput.service.StudentService;
 
-@RestController
-@RequestMapping("/api/students")
 public class StudentController {
     private final StudentService studentService;
 
@@ -26,7 +24,7 @@ public class StudentController {
     @PutMapping()
     public ResponseEntity<Student> updateStudent(@RequestBody Student student) {
         Student updatedStudent = studentService.update(student);
-        return ResponseEntity.ok(student);
+        return ResponseEntity.ok(updatedStudent);
     }
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {

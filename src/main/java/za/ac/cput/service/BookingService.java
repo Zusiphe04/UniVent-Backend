@@ -4,6 +4,8 @@ import za.ac.cput.domain.Booking;
 import za.ac.cput.domain.Event;
 import za.ac.cput.domain.Student;
 import za.ac.cput.domain.BookingStatusEnum;
+import za.ac.cput.exception.AlreadyBookedException;
+import za.ac.cput.exception.EventFullException;
 import za.ac.cput.factory.BookingFactory;
 import za.ac.cput.repository.BookingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,29 +26,25 @@ public class BookingService {
     @Autowired
     private BookingRepository bookingRepository;
 
-    @Autowired
-    private BookingFactory bookingFactory;
-
     public Booking registerForEvent(Student student, Event event) {
         // Business rule: Check for duplicate booking
         if (hasStudentBookedEvent(student, event)) {
-            throw new IllegalStateException("Student already has a booking for this event");
+            throw new AlreadyBookedException("Student already has a booking for this event");
         }
 
         // Business rule: Check event capacity
         long currentBookings = getBookingCountForEvent(event);
         if (currentBookings >= event.getMaxAttendees()) {
-            throw new IllegalStateException("Event has reached maximum capacity");
+            throw new EventFullException("Event has reached maximum capacity");
         }
 
         // Business rule: Check if event is in the future
-        LocalDateTime eventDateTime = LocalDateTime.parse(event.getDateTime());
-        if (eventDateTime.isBefore(LocalDateTime.now())) {
+        if (isPast(event.getDateTime())) {
             throw new IllegalArgumentException("Cannot register for past events");
         }
 
         // Create booking using factory
-        Booking booking = bookingFactory.createBooking(student, event);
+        Booking booking = BookingFactory.createBooking(student, event);
 
         // Save booking
         return bookingRepository.save(booking);
@@ -122,5 +123,17 @@ public class BookingService {
 
     public long getBookingCountForEvent(Event event) {
         return bookingRepository.countByEvent(event);
+    }
+
+    private boolean isPast(String dateTime) {
+        try {
+            return LocalDateTime.parse(dateTime).isBefore(LocalDateTime.now());
+        } catch (DateTimeParseException localDateTimeException) {
+            try {
+                return OffsetDateTime.parse(dateTime).toInstant().isBefore(Instant.now());
+            } catch (DateTimeParseException offsetDateTimeException) {
+                throw new IllegalArgumentException("Event date and time must be ISO 8601", offsetDateTimeException);
+            }
+        }
     }
 }

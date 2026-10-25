@@ -90,6 +90,7 @@ public class JwtAuthenticationFilterTest {
 
         when(jwtUtil.validateToken("token")).thenReturn(true);
         when(jwtUtil.extractUserId("token")).thenReturn("org-1");
+        when(jwtUtil.extractRole("token")).thenReturn("ORGANIZER");
         when(userRepository.findById("org-1")).thenReturn(Optional.of(organizer));
 
         filter.doFilter(requestWithToken(), new MockHttpServletResponse(), new MockFilterChain());

@@ -66,6 +66,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/bookings/**").hasRole("STUDENT")
                         .requestMatchers("/api/tickets/**").hasRole("STUDENT")
 
+                        .requestMatchers("/api/organizers/me/events").hasAnyRole("ORGANIZER", "ADMIN")
+                        .requestMatchers("/api/venues/**").authenticated()
+
                         // Organizer-only routes (event creation/update now lives
                         // under /api/organizers/** so ownership can be enforced
                         // against the signed-in organizer)

@@ -8,6 +8,7 @@ package za.ac.cput.service;
  **/
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import za.ac.cput.domain.Booking;
 import za.ac.cput.domain.Event;
 import za.ac.cput.domain.Ticket;
@@ -77,20 +78,19 @@ public class TicketService implements ITicketService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public TicketDTO getTicketByBookingId(int bookingId, String requestingUserId) {
-        Ticket ticket = ticketRepository.findByBookingId(bookingId).orElse(null);
+        Ticket ticket = ticketRepository.findOwnedByBookingId(bookingId, requestingUserId).orElse(null);
+        if (ticket == null && bookingRepository.existsById(bookingId)
+                && !bookingRepository.existsByBookingIdAndStudent_UserId(bookingId, requestingUserId)) {
+            throw new UnauthorizedException("You do not own this booking");
+        }
         if (ticket == null) {
             return null;
         }
-
         Booking booking = bookingRepository.findById(bookingId).orElse(null);
         if (booking == null) {
             return null;
-        }
-
-        if (booking.getStudent() == null
-                || !booking.getStudent().getUserId().equals(requestingUserId)) {
-            throw new UnauthorizedException("You do not own this booking");
         }
 
         return toDTO(ticket, booking);

@@ -6,7 +6,7 @@ import za.ac.cput.domain.NotificationType;
 import java.time.Instant;
 
 public record NotificationResponse(
-        String notificationId,
+        String id,
         NotificationType type,
         String title,
         String message,

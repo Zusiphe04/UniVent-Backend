@@ -1,18 +1,19 @@
 package za.ac.cput.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import za.ac.cput.domain.Administrator;
-import za.ac.cput.domain.Event;
-import za.ac.cput.domain.User;
-import za.ac.cput.dtos.EventResponseDTO;
+import za.ac.cput.dtos.AdminEventSummaryDTO;
 import za.ac.cput.dtos.PlatformStatsDTO;
 import za.ac.cput.dtos.UserResponseDTO;
-import za.ac.cput.service.AdministratorService;
+import za.ac.cput.service.IAdministratorService;
+import za.ac.cput.util.AuthenticatedUser;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**Student name: Amanda Msutu
  * Student number: 222428600
@@ -24,126 +25,84 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/admin")
 public class AdministratorController {
-    private final AdministratorService administratorService;
+    private final IAdministratorService administratorService;
 
-    public AdministratorController(AdministratorService administratorService){
+    public AdministratorController(IAdministratorService administratorService){
         this.administratorService = administratorService;
     }
 
     @GetMapping("/events")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<EventResponseDTO>> getAllEvents() {
-        List<Event> events = administratorService.monitorEvents();
-        List<EventResponseDTO> eventDTOs = events.stream()
-                .map(event -> new EventResponseDTO(
-                        event.getEventId(),
-                        event.getName(),
-                        event.getDescription(),
-                        event.getDateTime(),
-                        event.getMaxAttendees(),
-                        event.getStatus()
-                ))
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(eventDTOs);
+    public ResponseEntity<List<AdminEventSummaryDTO>> getAllEvents(
+            @RequestParam(defaultValue = "ALL") String status) {
+        return ResponseEntity.ok(administratorService.getEvents(status));
     }
 
     @PatchMapping("/events/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<EventResponseDTO> approveEvent(@PathVariable Integer id) {
-        Event event = administratorService.approveEvent(id);
-        if (event == null) {
-            return ResponseEntity.notFound().build();
-        }
-        EventResponseDTO eventDTO = new EventResponseDTO(
-                event.getEventId(),
-                event.getName(),
-                event.getDescription(),
-                event.getDateTime(),
-                event.getMaxAttendees(),
-                event.getStatus()
-        );
-        return ResponseEntity.ok(eventDTO);
+    public ResponseEntity<AdminEventSummaryDTO> approveEvent(@PathVariable String id) {
+        return ResponseEntity.ok(administratorService.approveEvent(id));
     }
 
     @PatchMapping("/events/{id}/disable")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<EventResponseDTO> disableEvent(@PathVariable Integer id) {
-        Event event = administratorService.disableEvent(id);
-        if (event == null) {
-            return ResponseEntity.notFound().build();
-        }
-        EventResponseDTO eventDTO = new EventResponseDTO(
-                event.getEventId(),
-                event.getName(),
-                event.getDescription(),
-                event.getDateTime(),
-                event.getMaxAttendees(),
-                event.getStatus()
-        );
-        return ResponseEntity.ok(eventDTO);
+    public ResponseEntity<AdminEventSummaryDTO> disableEvent(@PathVariable String id) {
+        return ResponseEntity.ok(administratorService.disableEvent(id));
     }
 
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
-        List<User> users = administratorService.viewAllUsers();
-        List<UserResponseDTO> userDTOs = users.stream()
-                .map(user -> new UserResponseDTO(
-                        user.getUserId(),
-                        user.getName(),
-                        user.getEmail(),
-                        user.getPhoneNumber(),
-                        user.getRole(),
-                        user.isDisabled()
-                ))
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(userDTOs);
+    public ResponseEntity<Page<UserResponseDTO>> getAllUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String role,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        if (page < 0 || size < 1) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid page or size");
+        }
+        return ResponseEntity.ok(administratorService.getUsers(search, role, PageRequest.of(page, size)));
     }
 
     @PatchMapping("/users/{id}/disable")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserResponseDTO> disableUser(@PathVariable String id) {
-        User user = administratorService.disableUser(id);
-        if (user == null) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<UserResponseDTO> disableUser(
+            @PathVariable String id,
+            Authentication authentication) {
+        if (!(authentication.getPrincipal() instanceof AuthenticatedUser principal)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Authentication required");
         }
-        UserResponseDTO userDTO = new UserResponseDTO(
-                user.getUserId(),
-                user.getName(),
-                user.getEmail(),
-                user.getPhoneNumber(),
-                user.getRole(),
-                user.isDisabled()
-        );
-        return ResponseEntity.ok(userDTO);
+        return ResponseEntity.ok(administratorService.disableUser(id, principal.userId()));
+    }
+
+    @PatchMapping("/users/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponseDTO> approveOrganizer(@PathVariable String id) {
+        return ResponseEntity.ok(administratorService.approveOrganizer(id));
     }
 
     @GetMapping("/stats")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PlatformStatsDTO> getPlatformStats() {
-        PlatformStatsDTO stats = administratorService.getPlatformStats();
-        return ResponseEntity.ok(stats);
+        return ResponseEntity.ok(administratorService.getStats());
     }
 
-    @PostMapping
     public ResponseEntity<Administrator> createAdministrator(@RequestBody Administrator administrator) {
         Administrator createdAdministrator = administratorService.create(administrator);
         return ResponseEntity.ok(createdAdministrator);
     }
 
-    @GetMapping("/{id}")
     public ResponseEntity<Administrator> getAdministratorById(@PathVariable String id) {
         Administrator administrator = administratorService.read(id);
         return ResponseEntity.ok(administrator);
     }
 
-    @PutMapping()
     public ResponseEntity<Administrator> updateAdministrator(@RequestBody Administrator administrator) {
         Administrator updatedAdministrator = administratorService.update(administrator);
         return ResponseEntity.ok(updatedAdministrator);
     }
 
-    @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {
         administratorService.delete(id);
         return ResponseEntity.noContent().build();

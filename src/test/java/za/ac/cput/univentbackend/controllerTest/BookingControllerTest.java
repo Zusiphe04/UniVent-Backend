@@ -67,6 +67,7 @@ public class BookingControllerTest {
 
     private Booking createTestBooking() {
         return new Booking.Builder()
+                .setBookingReference("BKG-123456")
                 .setStudent(createTestStudent())
                 .setEvent(createTestEvent())
                 .build();
