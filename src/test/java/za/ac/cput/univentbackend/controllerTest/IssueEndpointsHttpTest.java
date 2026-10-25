@@ -1,5 +1,6 @@
 package za.ac.cput.univentbackend.controllerTest;
 
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,8 @@ class IssueEndpointsHttpTest {
     private MockMvc mvc;
     @Autowired
     private UserRepository users;
+    @Autowired
+    private EntityManager entityManager;
     @Autowired
     private EventRepository events;
     @Autowired
@@ -143,14 +146,41 @@ class IssueEndpointsHttpTest {
         mvc.perform(patch("/api/admin/users/http-student/disable")
                         .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("http-student"))
+                .andExpect(jsonPath("$.role").value("STUDENT"))
                 .andExpect(jsonPath("$.accountStatus").value("DISABLED"))
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
+        users.flush();
+        entityManager.clear();
+        mvc.perform(get("/api/admin/users").param("search", "Student")
+                        .header("Authorization", bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].accountStatus").value("DISABLED"));
         mvc.perform(patch("/api/admin/users/http-admin/disable")
                         .header("Authorization", bearer(adminToken)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Administrators cannot disable their own account"));
         mvc.perform(patch("/api/admin/users/missing/disable")
                         .header("Authorization", bearer(adminToken)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("User not found: missing"));
+    }
+
+    @Test
+    void onlyAnAdministratorCanDisableAUser() throws Exception {
+        mvc.perform(patch("/api/admin/users/http-student/disable"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401));
+
+        mvc.perform(patch("/api/admin/users/http-student/disable")
+                        .header("Authorization", bearer(studentToken)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+
+        mvc.perform(get("/api/admin/users").param("search", "Student")
+                        .header("Authorization", bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].accountStatus").value("ACTIVE"));
     }
 
     @Test
