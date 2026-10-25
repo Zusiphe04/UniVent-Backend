@@ -61,12 +61,32 @@ public class Event {
     public Venue getVenue() {
         return venue; }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setDateTime(String dateTime) {
+        this.dateTime = dateTime;
+    }
+
+    public void setMaxAttendees(int maxAttendees) {
+        this.maxAttendees = maxAttendees;
+    }
+
     public void setStatus(EventStatusEnum status) {
         this.status = status;
     }
 
     public void setOrganizer(Organizer organizer) {
         this.organizer = organizer;
+    }
+
+    public void setVenue(Venue venue) {
+        this.venue = venue;
     }
 
     @Override

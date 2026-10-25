@@ -1,6 +1,10 @@
 package za.ac.cput.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import za.ac.cput.domain.Event;
+import za.ac.cput.dtos.EventUpdateRequest;
+import za.ac.cput.util.AuthenticatedUser;
 
 import java.util.List;
 
@@ -12,5 +16,10 @@ import java.util.List;
 
 public interface IEventService extends IService<Event, Integer> {
     List<Event> findAll();
-}
 
+    Page<Event> search(String search, String status, String from, String to, Pageable pageable);
+
+    Event updateEvent(Integer id, EventUpdateRequest request, AuthenticatedUser organizer);
+
+    Event cancelEvent(Integer id, AuthenticatedUser organizer);
+}

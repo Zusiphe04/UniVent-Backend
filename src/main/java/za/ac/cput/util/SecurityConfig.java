@@ -70,6 +70,12 @@ public class SecurityConfig {
                         // under /api/organizers/** so ownership can be enforced
                         // against the signed-in organizer)
                         .requestMatchers("/api/organizers/**").hasRole("ORGANIZER")
+                        // Unauthenticated PUT/PATCH → 401 (RestAuthenticationEntryPoint).
+                        // Authenticated non-organizer → 403 (RestAccessDeniedHandler).
+                        // Authenticated organizer who does not own the event → 403
+                        // (UnauthorizedException via GlobalExceptionHandler).
+                        .requestMatchers(HttpMethod.PUT, "/api/events/*").hasRole("ORGANIZER")
+                        .requestMatchers(HttpMethod.PATCH, "/api/events/*/cancel").hasRole("ORGANIZER")
 
                         // Admin-only routes
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
